@@ -1,0 +1,26 @@
+{
+  "name": "tokenize-anything",
+  "version": "0.1.0",
+  "description": "A simple and tiny tokenization library written in Javascript",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jesse-sheehan/tokenize-anything.git"
+  },
+  "keywords": [
+    "tokenize",
+    "tokenise",
+    "parse",
+    "parser",
+    "lexer"
+  ],
+  "author": "Jesse Sheehan <simplekiwi@gmail.com> (http://binarycave.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jesse-sheehan/tokenize-anything/issues"
+  },
+  "homepage": "https://github.com/jesse-sheehan/tokenize-anything"
+}
