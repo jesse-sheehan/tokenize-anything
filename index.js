@@ -15,13 +15,14 @@ module.exports = {
     var index = 0, t_list = [];
     
     // make each obj.patterns into a list and make every regex start with a caret
-    for (var i = 0; i <t_defs.length; i++) {
-      t_defs[i].patterns = [].concat(t_defs[i].patterns);
-      for (var j = 0; j < t_defs[i].patterns.length; j++) {
-        if (t_defs[i].patterns[j].source[0] != '^')
-          t_defs[i].patterns[j] = new RegExp('^' + t_defs[i].patterns[j].source);
-      }
-    }
+    t_defs.map(function(c) {
+      c.patterns = [].concat(c.patterns)
+        .map(function(p,i,a) {
+          if (p.source[0] != '^')
+            return a[i] = new RegExp('^' + p.source);
+          return p;
+      });
+    });
     
     // loop over each character of the source
     while (index < source.length) {
@@ -62,7 +63,7 @@ module.exports = {
       index++;
     }
     
-    return module.exports._make_chainable(t_list);
+    return module.exports._make_chainable(t_list, t_defs);
   },
   
   /**
@@ -77,7 +78,7 @@ module.exports = {
     t_names = [].concat(t_names); // in case t_names is a string
     return module.exports._make_chainable(t_list.filter(function(x) {
       return t_names.indexOf(x.name) == -1;
-    }));
+    }), t_list.token_definitions);
   },
   
   /**
@@ -95,7 +96,7 @@ module.exports = {
   /**
   * Returns a chainable array of tokens with composite tokens defined
   *
-  * @method define
+  * @method compose
   * @param {Array} t_list
   * @param {String} t_name
   * @param {String} open_edge
@@ -103,7 +104,7 @@ module.exports = {
   * @param {Object} options
   * @return {Array}
   */
-  define: function(t_list, t_name, open_edge, close_edge, options) {
+  compose: function(t_list, t_name, open_edge, close_edge, options) {
     var index = 0, new_t_list = [];
     
     var in_block = false, block_index, block_value;
@@ -116,14 +117,20 @@ module.exports = {
       options = {
         balance_edges: false,
         include_edges: false,
-        preserve_edges: false
+        preserve_edges: false,
+        recurse: false
       };
     } else {
-      if (options.preserve_edges === null || typeof(options.preserve_edges) == 'undefined') options.preserve_edges = false;
-      if (options.balance_edges === null || typeof(options.balance_edges) == 'undefined') options.balance_edges = false;
-      if (options.include_edges === null || typeof(options.include_edges) == 'undefined') options.include_edges = false;
+      if (options.preserve_edges === null || typeof(options.preserve_edges) == 'undefined')
+        options.preserve_edges = false;
+      if (options.balance_edges === null || typeof(options.balance_edges) == 'undefined')
+        options.balance_edges = false;
+      if (options.include_edges === null || typeof(options.include_edges) == 'undefined')
+        options.include_edges = false;
+      if (options.recurse === null || typeof(options.recurse) == 'undefined')
+        options.recurse = false;
     }
- 
+
     while (index < t_list.length) {
       
       // If we are currently inside a block
@@ -141,16 +148,30 @@ module.exports = {
             if (options.include_edges)
               block_value += t_list[index].value;
             
+            var children = [];
+            	
+            if (typeof(options.recurse) == 'boolean') {
+              if (options.recurse === true) {
+                // tokenize the block using t_defs
+                children = module.exports.tokenize(t_list.token_definitions, block_value);
+              }
+            } else {
+              // tokenize the block using different token definitions
+              children = module.exports.tokenize(options.recurse, block_value); 
+            }
+            
+            children = module.exports.compose(module.exports._make_chainable(children, t_list.token_definitions), t_name, open_edge, close_edge, options);
+            
             // Append the newly created block token to the new_t_list
             new_t_list.push({
               name: t_name,
               index: block_index,
-              value: block_value
+              value: block_value,
+              children: children
             });
             
             if (options.preserve_edges)
               new_t_list.push(t_list[index]);
-              
           } else {
             
             block_value += t_list[index].value;
@@ -189,9 +210,11 @@ module.exports = {
       index += 1;
     }
     
-    return module.exports._make_chainable(new_t_list);
+    return module.exports._make_chainable(new_t_list, t_list.token_definitions);
   },
   
+ //  map: function(t_list, callback, options
+   
   /**
   * Returns a copy of the array with chainable properties
   * 
@@ -199,7 +222,17 @@ module.exports = {
   * @param {Array} array
   * @return {Array}
   */
-  _make_chainable: function(array) {
+  _make_chainable: function(array, t_defs) {
+    
+    // default t_defs to array.token_definitions or []
+    if (t_defs === null || typeof(t_defs) == 'undefined') {
+      if (array.token_definitions === null || typeof(array.token_definitions) == 'undefined') {
+        t_defs = [];
+      }  else {
+        t_defs = array.token_definitions;
+        // TODO: doesn't seem to work. never finds the parent definitions
+      }
+    }
     
     // Check whether this array has already been made chainable
     if (array.is_chainable === null || typeof(array.is_chainable) == 'undefined' || array.is_chainable === false) {
@@ -207,8 +240,8 @@ module.exports = {
       // Make a copy of the array, we do not perform operations on the argument
       var array_copy = array.splice(0);
       
-      array_copy.define = function(t_name, open_edge, close_edge, options) {
-        return module.exports.define(this, t_name, open_edge, close_edge, options);
+      array_copy.compose = function(t_name, open_edge, close_edge, options) {
+        return module.exports.compose(this, t_name, open_edge, close_edge, options);
       };
       
       array_copy.remove = function(t_names) {
@@ -221,6 +254,9 @@ module.exports = {
       
       // Set the is_chainable variable so we don't make this array chainable again
       array_copy.is_chainable = true;
+      
+      // Set the token_definitions
+      array_copy.token_definitions = t_defs;
       
       return array_copy;
     }
