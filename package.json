@@ -2,7 +2,7 @@
   "name": "tokenize-anything",
   "version": "0.1.0",
   "description": "A simple and tiny tokenization library written in Javascript",
-  "main": "tokenize-anything.js",
+  "main": "tokenize-anything.min.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,6 +21,9 @@
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/jesse-sheehan/tokenize-anything/issues"
+  },
+  "devDependencies": {
+    "uglify-js": "2.x.x"
   },
   "homepage": "https://github.com/jesse-sheehan/tokenize-anything"
 }
